@@ -6,7 +6,8 @@ from django import template
 register = template.Library()
 
 
-def _liked_state(post, user):
+@register.filter
+def liked_by(post, user):
     """Return True when the given user liked the post.
 
     Falls back to a lightweight database check if a pre-computed
@@ -21,17 +22,3 @@ def _liked_state(post, user):
     if likes is not None:
         return likes.filter(user=user).exists()
     return False
-
-
-@register.filter
-def liked_by(post, user):
-    """Legacy filter to check whether ``user`` liked ``post``."""
-
-    return _liked_state(post, user)
-
-
-@register.simple_tag
-def user_liked(post, user):
-    """Template tag variant used by HTMX like button partials."""
-
-    return _liked_state(post, user)
