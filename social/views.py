@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
@@ -30,13 +30,6 @@ def is_friend(user, other_user):
     return other_user.id in get_friend_ids(user)
 
 
-def annotate_like_state(queryset, user):
-    """Attach an is_liked flag for the given user onto each post."""
-
-    like_exists = Like.objects.filter(user=user, post=OuterRef('pk'))
-    return queryset.annotate(is_liked=Exists(like_exists))
-
-
 class SignUpView(View):
     template_name = 'registration/signup.html'
 
@@ -60,10 +53,13 @@ class FeedView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         friends = get_friend_ids(self.request.user)
-        posts = Post.objects.filter(
-            Q(visibility='public') | Q(visibility='friends', author_id__in=friends)
-        ).select_related('author').prefetch_related('comments__author', 'likes')
-        return annotate_like_state(posts, self.request.user)
+        return (
+            Post.objects.filter(
+                Q(visibility='public') | Q(visibility='friends', author_id__in=friends)
+            )
+            .select_related('author')
+            .prefetch_related('comments__author', 'likes')
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -94,7 +90,6 @@ def toggle_like(request, pk):
     like, created = Like.objects.get_or_create(user=request.user, post=post)
     if not created:
         like.delete()
-    post.is_liked = post.likes.filter(user=request.user).exists()
     if request.htmx:
         return render(
             request,
@@ -131,8 +126,7 @@ class ProfileView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        posts = Post.objects.filter(author=self.object.user)
-        context['posts'] = annotate_like_state(posts, self.request.user)
+        context['posts'] = Post.objects.filter(author=self.object.user)
         context['profile_form'] = ProfileForm(instance=self.object)
         friend_ids = get_friend_ids(self.request.user)
         context['is_friend'] = self.object.user.id in friend_ids
@@ -212,10 +206,6 @@ class ChatListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         friends = get_friend_ids(self.request.user)
         context['friends'] = get_user_model().objects.filter(id__in=friends)
-        conversations = list(context['conversations'])
-        for convo in conversations:
-            convo.other = convo.participants.exclude(pk=self.request.user.pk).first()
-        context['conversations'] = conversations
         return context
 
 
