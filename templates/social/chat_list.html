@@ -1,0 +1,58 @@
+{% extends 'social/base.html' %}
+{% load humanize %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card fb-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="mb-0">Messenger</h4>
+          <span class="text-muted small">Private chats with your friends</span>
+        </div>
+        <div class="list-group list-group-flush fb-chat-list">
+          {% for convo in conversations %}
+            {% if convo.other %}
+              <a class="list-group-item list-group-item-action d-flex align-items-center" href="{% url 'chat_thread' convo.other.username %}">
+                <div class="avatar-circle me-3">{{ convo.other.username|first|upper }}</div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <strong>{{ convo.other.username }}</strong>
+                    {% if convo.messages.last %}
+                      <span class="small text-muted">{{ convo.messages.last.created_at|naturaltime }}</span>
+                    {% endif %}
+                  </div>
+                  {% if convo.messages.last %}
+                    <div class="small text-muted">{{ convo.messages.last.body|truncatewords:12 }}</div>
+                  {% else %}
+                    <div class="small text-muted">No messages yet</div>
+                  {% endif %}
+                </div>
+              </a>
+            {% endif %}
+          {% empty %}
+            <p class="text-muted mb-0">Start a chat with a friend to see it appear here.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card fb-card">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3">Friends</h6>
+        {% for friend in friends %}
+          <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+            <div class="d-flex align-items-center">
+              <div class="avatar-circle me-2">{{ friend.username|first|upper }}</div>
+              <span>{{ friend.username }}</span>
+            </div>
+            <a class="btn btn-sm btn-outline-primary rounded-pill" href="{% url 'chat_thread' friend.username %}">Message</a>
+          </div>
+        {% empty %}
+          <p class="text-muted mb-0">Add friends to start private conversations.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
