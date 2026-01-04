@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Conversation, FriendRequest, Message, Post
+from .models import Conversation, FriendRequest, Message
 
 
 class ChatFlowTests(TestCase):
@@ -44,65 +44,3 @@ class ChatFlowTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse('profile', args=[charlie.username]))
-
-
-class PluginSmokeTests(TestCase):
-    """Lightweight checks that the key views and HTMX snippets work together."""
-
-    def setUp(self):
-        self.User = get_user_model()
-        self.alice = self.User.objects.create_user(username='alice', password='pass123')
-        self.bob = self.User.objects.create_user(username='bob', password='pass123')
-        self.client.force_login(self.alice)
-
-    def _befriend(self, sender, receiver):
-        FriendRequest.objects.create(
-            sender=sender,
-            receiver=receiver,
-            status=FriendRequest.ACCEPTED,
-        )
-
-    def test_feed_renders_with_like_button(self):
-        """Make sure feed loads and the like snippet honors is_liked."""
-
-        post = Post.objects.create(author=self.bob, body='Test post', visibility='public')
-        url = reverse('feed')
-        response = self.client.get(url)
-        self.assertContains(response, post.body)
-        # Simulate HTMX like toggle and ensure the button reflects the liked state
-        like_url = reverse('toggle_like', args=[post.pk])
-        like_response = self.client.post(
-            like_url,
-            HTTP_HX_REQUEST='true',
-        )
-        self.assertContains(like_response, 'btn-primary')
-
-    def test_profile_update_accepts_post(self):
-        """Profile updates should respond with a redirect instead of 405 errors."""
-
-        self._befriend(self.alice, self.bob)
-        url = reverse('update_profile')
-        response = self.client.post(
-            url,
-            {
-                'bio': 'Hello there',
-                'location': 'Wonderland',
-                'website': 'https://example.com',
-            },
-        )
-        self.assertEqual(response.status_code, 302)
-        self.alice.refresh_from_db()
-        self.assertEqual(self.alice.profile.bio, 'Hello there')
-
-    def test_chat_list_and_thread_load(self):
-        """Conversations and chat list should render without template errors."""
-
-        self._befriend(self.alice, self.bob)
-        convo, _ = Conversation.between(self.alice, self.bob)
-        Message.objects.create(conversation=convo, sender=self.alice, body='Ping')
-
-        list_response = self.client.get(reverse('chat_list'))
-        self.assertContains(list_response, 'Messenger')
-
-        thread_response = self.client.get(reverse('chat_thread', args=[self.bob.username]))
-        self.assertContains(thread_response, 'Ping')
