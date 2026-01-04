@@ -7,6 +7,8 @@ User = get_user_model()
 
 
 class Profile(models.Model):
+    """Basic information a person can share on their profile page."""
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     bio = models.TextField(blank=True)
     location = models.CharField(max_length=100, blank=True)
@@ -19,6 +21,8 @@ class Profile(models.Model):
 
 
 class Post(models.Model):
+    """A short update that can be public or only visible to friends."""
+
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)
@@ -36,6 +40,8 @@ class Post(models.Model):
 
 
 class Comment(models.Model):
+    """Simple responses people leave on posts."""
+
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, related_name='comments', on_delete=models.CASCADE)
     text = models.TextField()
@@ -49,6 +55,8 @@ class Comment(models.Model):
 
 
 class Like(models.Model):
+    """Quick reaction a user can add to a post."""
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, related_name='likes', on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=timezone.now)
@@ -61,6 +69,8 @@ class Like(models.Model):
 
 
 class FriendRequest(models.Model):
+    """Tracks connection invitations between two users."""
+
     PENDING = 'pending'
     ACCEPTED = 'accepted'
     DECLINED = 'declined'
@@ -95,6 +105,8 @@ class FriendRequest(models.Model):
 
 
 class Conversation(models.Model):
+    """Private chat room for two friends."""
+
     participants = models.ManyToManyField(User, related_name='conversations')
     created_at = models.DateTimeField(default=timezone.now)
 
@@ -107,6 +119,8 @@ class Conversation(models.Model):
 
     @classmethod
     def between(cls, user_a, user_b):
+        """Find the shared chat for two users or create one."""
+
         conversation = (
             cls.objects.filter(participants=user_a)
             .filter(participants=user_b)
@@ -120,6 +134,8 @@ class Conversation(models.Model):
 
 
 class Message(models.Model):
+    """One chat bubble sent inside a conversation."""
+
     conversation = models.ForeignKey(
         Conversation, related_name='messages', on_delete=models.CASCADE
     )

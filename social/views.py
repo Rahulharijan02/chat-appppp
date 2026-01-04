@@ -13,6 +13,8 @@ from .models import Conversation, FriendRequest, Like, Message, Post, Profile
 
 
 def get_friend_ids(user):
+    """Return a set of user IDs the given user is friends with."""
+
     sent = FriendRequest.objects.filter(
         sender=user, status=FriendRequest.ACCEPTED
     ).values_list('receiver', flat=True)
@@ -23,6 +25,8 @@ def get_friend_ids(user):
 
 
 def is_friend(user, other_user):
+    """Check if two users have an accepted friendship connection."""
+
     return other_user.id in get_friend_ids(user)
 
 
@@ -61,7 +65,9 @@ class FeedView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['post_form'] = PostForm()
         context['comment_form'] = CommentForm()
-        context['friend_requests'] = FriendRequest.objects.filter(receiver=self.request.user, status=FriendRequest.PENDING)
+        context['friend_requests'] = FriendRequest.objects.filter(
+            receiver=self.request.user, status=FriendRequest.PENDING
+        )
         return context
 
 
@@ -154,8 +160,21 @@ def send_friend_request(request, username):
     if receiver == request.user:
         messages.error(request, 'You cannot befriend yourself.')
         return redirect('profile', username=username)
-    FriendRequest.objects.get_or_create(sender=request.user, receiver=receiver)
-    messages.info(request, 'Friend request sent.')
+
+    # Avoid noisy duplicates by telling users when they are already connected
+    if is_friend(request.user, receiver):
+        messages.info(request, 'You are already friends!')
+        return redirect('profile', username=username)
+
+    pending_request, created = FriendRequest.objects.get_or_create(
+        sender=request.user, receiver=receiver
+    )
+    if created:
+        messages.info(request, 'Friend request sent.')
+    elif pending_request.status == FriendRequest.PENDING:
+        messages.info(request, 'Friend request already sent.')
+    else:
+        messages.info(request, 'Previous request handled; feel free to try again later.')
     return redirect('profile', username=username)
 
 
@@ -196,14 +215,23 @@ class ChatThreadView(LoginRequiredMixin, View):
     def get_target_user(self, username):
         return get_object_or_404(get_user_model(), username=username)
 
-    def get(self, request, username):
+    def _validate_chat_partner(self, request, username):
+        """Make sure a chat can start and return the other user or a redirect."""
+
         target_user = self.get_target_user(username)
         if target_user == request.user:
             messages.error(request, 'Messaging yourself is not supported.')
-            return redirect('chat_list')
+            return None, redirect('chat_list')
         if not is_friend(request.user, target_user):
             messages.error(request, 'You can only chat with accepted connections.')
-            return redirect('profile', username=target_user.username)
+            return None, redirect('profile', username=target_user.username)
+        return target_user, None
+
+    def get(self, request, username):
+        target_user, redirect_response = self._validate_chat_partner(request, username)
+        if redirect_response:
+            return redirect_response
+
         conversation, _ = Conversation.between(request.user, target_user)
         messages_qs = conversation.messages.select_related('sender')
         return render(
@@ -218,13 +246,10 @@ class ChatThreadView(LoginRequiredMixin, View):
         )
 
     def post(self, request, username):
-        target_user = self.get_target_user(username)
-        if target_user == request.user:
-            messages.error(request, 'Messaging yourself is not supported.')
-            return redirect('chat_list')
-        if not is_friend(request.user, target_user):
-            messages.error(request, 'You can only chat with accepted connections.')
-            return redirect('profile', username=target_user.username)
+        target_user, redirect_response = self._validate_chat_partner(request, username)
+        if redirect_response:
+            return redirect_response
+
         conversation, _ = Conversation.between(request.user, target_user)
         form = MessageForm(request.POST)
         if form.is_valid():
