@@ -1,11 +1,8 @@
-{% load social_extras %}
-{% with liked=post|liked_by:user %}
 <form hx-post="{% url 'toggle_like' post.pk %}" hx-trigger="click" hx-swap="outerHTML">
   {% csrf_token %}
-  <button type="submit" class="btn btn-sm {% if liked %}btn-primary{% else %}btn-outline-primary{% endif %}">
+  <button type="submit" class="btn btn-sm {% if post.likes.filter(user=user).exists %}btn-primary{% else %}btn-outline-primary{% endif %}">
     <i class="bi bi-hand-thumbs-up"></i>
-    {% if liked %}Liked{% else %}Like{% endif %}
+    {% if post.likes.filter(user=user).exists %}Liked{% else %}Like{% endif %}
     · {{ post.likes.count }}
   </button>
 </form>
-{% endwith %}
