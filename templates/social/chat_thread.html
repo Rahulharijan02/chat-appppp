@@ -1,0 +1,42 @@
+{% extends 'social/base.html' %}
+{% load humanize %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card fb-card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0">Chat with {{ other_user.username }}</h5>
+          <small class="text-muted">Private conversation</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'chat_list' %}"><i class="bi bi-arrow-left"></i> Chats</a>
+          <div class="avatar-circle">{{ other_user.username|first|upper }}</div>
+        </div>
+      </div>
+      <div class="card-body fb-thread-body">
+        <div class="fb-message-stack">
+          {% for message in messages %}
+            <div class="fb-bubble {% if message.sender == user %}fb-bubble-self{% else %}fb-bubble-other{% endif %}">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong>{{ message.sender.username }}</strong>
+                <small class="text-muted">{{ message.created_at|naturaltime }}</small>
+              </div>
+              <div>{{ message.body|linebreaksbr }}</div>
+            </div>
+          {% empty %}
+            <p class="text-muted mb-0">Say hi to start the conversation.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-footer bg-white">
+        <form method="post" class="d-flex align-items-center gap-2">
+          {% csrf_token %}
+          <div class="flex-grow-1">{{ form.body }}</div>
+          <button class="btn btn-primary rounded-pill" type="submit"><i class="bi bi-send-fill me-1"></i>Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
