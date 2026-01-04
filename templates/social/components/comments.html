@@ -1,0 +1,19 @@
+{% load humanize %}
+<div class="comments">
+  <h6 class="text-muted">Comments ({{ post.comments.count }})</h6>
+  {% for comment in post.comments.all %}
+    <div class="border rounded p-2 mb-2">
+      <strong>{{ comment.author.username }}</strong> · {{ comment.created_at|naturaltime }}
+      <p class="mb-0">{{ comment.text }}</p>
+    </div>
+  {% empty %}
+    <p class="text-muted">Be the first to respond.</p>
+  {% endfor %}
+  <form hx-post="{% url 'add_comment' post.pk %}" hx-target="closest .comments" hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="mb-2">
+      <textarea name="text" rows="2" class="form-control" placeholder="Add a comment..." required></textarea>
+    </div>
+    <button type="submit" class="btn btn-outline-primary btn-sm">Comment</button>
+  </form>
+</div>
