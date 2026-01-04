@@ -1,0 +1,58 @@
+{% extends 'social/base.html' %}
+{% load humanize %}
+{% block content %}
+<div class="row">
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body text-center">
+        {% if object.avatar %}
+          <img src="{{ object.avatar }}" class="img-fluid rounded-circle mb-3" alt="avatar" width="120" height="120">
+        {% else %}
+          <div class="placeholder bg-light border rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 120px; height:120px;">👤</div>
+        {% endif %}
+        <h4>{{ object.user.username }}</h4>
+        <p class="text-muted">{{ object.job_title }}</p>
+        <p>{{ object.bio }}</p>
+        <p><i class="bi bi-geo-alt"></i> {{ object.location }}</p>
+        {% if object.portfolio_url %}
+          <p><a href="{{ object.portfolio_url }}" target="_blank">Portfolio</a></p>
+        {% endif %}
+        {% if user != object.user %}
+          <a class="btn btn-primary" href="{% url 'send_friend_request' object.user.username %}">Connect</a>
+        {% endif %}
+      </div>
+    </div>
+    {% if user == object.user %}
+    <div class="card">
+      <div class="card-body">
+        <h5>Edit profile</h5>
+        <form method="post" action="{% url 'update_profile' %}">
+          {% csrf_token %}
+          {{ profile_form.as_p }}
+          <button type="submit" class="btn btn-outline-primary">Save</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-md-8">
+    <h4 class="mb-3">Recent posts</h4>
+    {% for post in posts %}
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h5 class="card-title mb-1">{{ post.author.username }}</h5>
+              <small class="text-muted">{{ post.created_at|naturaltime }}</small>
+            </div>
+            <span class="badge bg-secondary text-capitalize">{{ post.visibility }}</span>
+          </div>
+          <p class="card-text mt-2">{{ post.message }}</p>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-muted">No updates yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
