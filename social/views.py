@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
@@ -8,8 +8,22 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.views.generic import DetailView, ListView
 
-from .forms import CommentForm, PostForm, ProfileForm, SignUpForm
-from .models import FriendRequest, Like, Post, Profile
+from .forms import CommentForm, MessageForm, PostForm, ProfileForm, SignUpForm
+from .models import Conversation, FriendRequest, Like, Message, Post, Profile
+
+
+def get_friend_ids(user):
+    sent = FriendRequest.objects.filter(
+        sender=user, status=FriendRequest.ACCEPTED
+    ).values_list('receiver', flat=True)
+    received = FriendRequest.objects.filter(
+        receiver=user, status=FriendRequest.ACCEPTED
+    ).values_list('sender', flat=True)
+    return set(sent).union(received)
+
+
+def is_friend(user, other_user):
+    return other_user.id in get_friend_ids(user)
 
 
 class SignUpView(View):
@@ -34,9 +48,7 @@ class FeedView(LoginRequiredMixin, ListView):
     context_object_name = 'posts'
 
     def get_queryset(self):
-        friends = FriendRequest.objects.filter(
-            status=FriendRequest.ACCEPTED, sender=self.request.user
-        ).values_list('receiver', flat=True)
+        friends = get_friend_ids(self.request.user)
         return (
             Post.objects.filter(
                 Q(visibility='public') | Q(visibility='friends', author_id__in=friends)
@@ -110,6 +122,18 @@ class ProfileView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['posts'] = Post.objects.filter(author=self.object.user)
         context['profile_form'] = ProfileForm(instance=self.object)
+        friend_ids = get_friend_ids(self.request.user)
+        context['is_friend'] = self.object.user.id in friend_ids
+        context['has_pending_request'] = FriendRequest.objects.filter(
+            sender=self.request.user,
+            receiver=self.object.user,
+            status=FriendRequest.PENDING,
+        ).exists()
+        context['incoming_request'] = FriendRequest.objects.filter(
+            sender=self.object.user,
+            receiver=self.request.user,
+            status=FriendRequest.PENDING,
+        ).exists()
         return context
 
 
@@ -145,3 +169,80 @@ def respond_friend_request(request, pk, decision):
         friend_request.decline()
         messages.info(request, 'Friend request declined.')
     return redirect('feed')
+
+
+class ChatListView(LoginRequiredMixin, ListView):
+    model = Conversation
+    template_name = 'social/chat_list.html'
+    context_object_name = 'conversations'
+
+    def get_queryset(self):
+        return (
+            Conversation.objects.filter(participants=self.request.user)
+            .prefetch_related('participants', 'messages__sender')
+            .order_by('-created_at')
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        friends = get_friend_ids(self.request.user)
+        context['friends'] = get_user_model().objects.filter(id__in=friends)
+        return context
+
+
+class ChatThreadView(LoginRequiredMixin, View):
+    template_name = 'social/chat_thread.html'
+
+    def get_target_user(self, username):
+        return get_object_or_404(get_user_model(), username=username)
+
+    def get(self, request, username):
+        target_user = self.get_target_user(username)
+        if target_user == request.user:
+            messages.error(request, 'Messaging yourself is not supported.')
+            return redirect('chat_list')
+        if not is_friend(request.user, target_user):
+            messages.error(request, 'You can only chat with accepted connections.')
+            return redirect('profile', username=target_user.username)
+        conversation, _ = Conversation.between(request.user, target_user)
+        messages_qs = conversation.messages.select_related('sender')
+        return render(
+            request,
+            self.template_name,
+            {
+                'conversation': conversation,
+                'messages': messages_qs,
+                'form': MessageForm(),
+                'other_user': target_user,
+            },
+        )
+
+    def post(self, request, username):
+        target_user = self.get_target_user(username)
+        if target_user == request.user:
+            messages.error(request, 'Messaging yourself is not supported.')
+            return redirect('chat_list')
+        if not is_friend(request.user, target_user):
+            messages.error(request, 'You can only chat with accepted connections.')
+            return redirect('profile', username=target_user.username)
+        conversation, _ = Conversation.between(request.user, target_user)
+        form = MessageForm(request.POST)
+        if form.is_valid():
+            Message.objects.create(
+                conversation=conversation,
+                sender=request.user,
+                body=form.cleaned_data['body'],
+            )
+            messages.success(request, 'Message sent.')
+            return redirect('chat_thread', username=target_user.username)
+        messages_qs = conversation.messages.select_related('sender')
+        return render(
+            request,
+            self.template_name,
+            {
+                'conversation': conversation,
+                'messages': messages_qs,
+                'form': form,
+                'other_user': target_user,
+            },
+        )

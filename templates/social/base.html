@@ -17,6 +17,7 @@
           <ul class="navbar-nav me-auto">
             <li class="nav-item"><a class="nav-link" href="/feed/">Feed</a></li>
             {% if user.is_authenticated %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'chat_list' %}">Chats</a></li>
             <li class="nav-item"><a class="nav-link" href="{% url 'profile' user.username %}">Profile</a></li>
             {% endif %}
           </ul>

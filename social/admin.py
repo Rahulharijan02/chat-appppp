@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Comment, FriendRequest, Like, Post, Profile
+from .models import Comment, Conversation, FriendRequest, Like, Message, Post, Profile
 
 
 @admin.register(Profile)
@@ -33,3 +33,16 @@ class FriendRequestAdmin(admin.ModelAdmin):
     list_display = ('sender', 'receiver', 'status', 'created_at', 'responded_at')
     list_filter = ('status',)
     search_fields = ('sender__username', 'receiver__username')
+
+
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'created_at')
+    filter_horizontal = ('participants',)
+    search_fields = ('participants__username',)
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ('sender', 'conversation', 'created_at')
+    search_fields = ('sender__username', 'body')

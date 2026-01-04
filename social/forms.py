@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 
-from .models import Comment, Post, Profile
+from .models import Comment, Message, Post, Profile
 
 
 class SignUpForm(UserCreationForm):
@@ -47,4 +47,15 @@ class ProfileForm(forms.ModelForm):
             'job_title': forms.TextInput(attrs={'class': 'form-control'}),
             'portfolio_url': forms.URLInput(attrs={'class': 'form-control'}),
             'avatar': forms.URLInput(attrs={'class': 'form-control'}),
+        }
+
+
+class MessageForm(forms.ModelForm):
+    class Meta:
+        model = Message
+        fields = ('body',)
+        widgets = {
+            'body': forms.Textarea(
+                attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Say hello...'}
+            )
         }

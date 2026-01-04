@@ -7,6 +7,7 @@ A lightweight social networking starter inspired by Facebook-style features, bui
 - Profile pages with bio, location, role, avatar, and portfolio link fields.
 - Post creation with public/friends-only visibility, likes, and comments updated via HTMX.
 - Friend requests with accept/decline flow and quick dashboard in the feed sidebar.
+- Private 1:1 chats between friends, with an inbox and conversation pages.
 - Bootstrap styling with responsive layout and a small custom stylesheet.
 - Admin interface for moderating content.
 

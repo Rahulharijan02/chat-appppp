@@ -18,7 +18,15 @@
           <p><a href="{{ object.portfolio_url }}" target="_blank">Portfolio</a></p>
         {% endif %}
         {% if user != object.user %}
-          <a class="btn btn-primary" href="{% url 'send_friend_request' object.user.username %}">Connect</a>
+          {% if is_friend %}
+            <a class="btn btn-outline-primary" href="{% url 'chat_thread' object.user.username %}">Open chat</a>
+          {% elif incoming_request %}
+            <span class="badge bg-secondary">Respond to their request from your feed</span>
+          {% elif has_pending_request %}
+            <button class="btn btn-outline-secondary" disabled>Request sent</button>
+          {% else %}
+            <a class="btn btn-primary" href="{% url 'send_friend_request' object.user.username %}">Connect</a>
+          {% endif %}
         {% endif %}
       </div>
     </div>

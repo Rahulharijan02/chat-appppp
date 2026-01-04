@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    ChatListView,
+    ChatThreadView,
     FeedView,
     ProfileView,
     SignUpView,
@@ -22,4 +24,6 @@ urlpatterns = [
     path('profile/update/', update_profile, name='update_profile'),
     path('profile/<str:username>/friend/', send_friend_request, name='send_friend_request'),
     path('friend-request/<int:pk>/<str:decision>/', respond_friend_request, name='respond_friend_request'),
+    path('chat/', ChatListView.as_view(), name='chat_list'),
+    path('chat/<str:username>/', ChatThreadView.as_view(), name='chat_thread'),
 ]

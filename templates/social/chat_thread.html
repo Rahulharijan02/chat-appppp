@@ -1,0 +1,37 @@
+{% extends 'social/base.html' %}
+{% load humanize %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0">Chat with {{ other_user.username }}</h5>
+          <small class="text-muted">Private conversation</small>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'chat_list' %}"><i class="bi bi-arrow-left"></i> Back to chats</a>
+      </div>
+      <div class="card-body">
+        <div class="list-group mb-3">
+          {% for message in messages %}
+            <div class="list-group-item {% if message.sender == user %}list-group-item-info{% endif %}">
+              <div class="d-flex justify-content-between">
+                <strong>{{ message.sender.username }}</strong>
+                <small class="text-muted">{{ message.created_at|naturaltime }}</small>
+              </div>
+              <div class="mt-1">{{ message.body|linebreaksbr }}</div>
+            </div>
+          {% empty %}
+            <p class="text-muted mb-0">Say hi to start the conversation.</p>
+          {% endfor %}
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-2">{{ form.body.label_tag }} {{ form.body }}</div>
+          <button class="btn btn-primary" type="submit">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
